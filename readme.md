@@ -1,5 +1,3 @@
-# Wallet API Boilerplate
-
 A production-ready Go REST API boilerplate using Clean Architecture pattern with Fiber framework.
 
 ## Features
