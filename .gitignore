@@ -1,0 +1,30 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build output
+*.test
+*.out
+
+# Go build artifacts
+/bin/
+/build/
+/dist/
+
+# Dependency directories
+/vendor/
+
+# IDE/editor files
+*.swp
+*.swo
+*.idea/
+.vscode/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+.env
