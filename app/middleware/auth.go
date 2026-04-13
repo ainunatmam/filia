@@ -1,9 +1,9 @@
 package middleware
 
 import (
+	"mini-exchange/app/errors"
 	"strings"
 	"time"
-	"wallet-api/app/errors"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"

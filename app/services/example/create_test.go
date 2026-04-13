@@ -3,10 +3,10 @@ package example
 import (
 	"context"
 	"errors"
+	"mini-exchange/app/entity"
+	"mini-exchange/app/presentation"
+	"mini-exchange/app/repositories"
 	"testing"
-	"wallet-api/app/entity"
-	"wallet-api/app/presentation"
-	"wallet-api/app/repositories"
 )
 
 func TestExampleService_Create(t *testing.T) {

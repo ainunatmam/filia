@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"wallet-api/app/entity"
+	"mini-exchange/app/entity"
 )
 
 // MockExampleRepository is a mock implementation of ExampleRepository for testing

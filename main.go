@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"mini-exchange/app/libraries"
+	"mini-exchange/bootstrap"
+	"mini-exchange/config"
 	"os"
 	"time"
-	"wallet-api/app/libraries"
-	"wallet-api/bootstrap"
-	"wallet-api/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/pressly/goose/v3"
@@ -34,6 +34,9 @@ func main() {
 		runMigration(mysql)
 		return
 	}
+
+	// Initialize background worker
+	
 
 	app := fiber.New(fiber.Config{
 		BodyLimit:    4 * 1024 * 1024, // 4MB max body size

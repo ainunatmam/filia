@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"wallet-api/app/errors"
-	"wallet-api/app/libraries"
+	"mini-exchange/app/errors"
+	"mini-exchange/app/libraries"
 
 	"github.com/gofiber/fiber/v2"
 )

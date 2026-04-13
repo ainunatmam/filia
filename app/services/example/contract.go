@@ -2,8 +2,8 @@ package example
 
 import (
 	"context"
-	"wallet-api/app/presentation"
-	"wallet-api/app/repositories"
+	"mini-exchange/app/presentation"
+	"mini-exchange/app/repositories"
 )
 
 type ExampleService interface {

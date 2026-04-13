@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"wallet-api/app/entity"
+	"mini-exchange/app/entity"
 
 	"github.com/doug-martin/goqu/v9"
 )

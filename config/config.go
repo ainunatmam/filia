@@ -22,6 +22,14 @@ type Config struct {
 
 	// Rate limiting configuration
 	RateLimit RateLimitConfig
+
+	// Simulation configuration
+	Simulation SimulationConfig
+}
+
+type SimulationConfig struct {
+	Enabled  bool
+	Interval time.Duration
 }
 
 // DatabaseConfig holds database-specific configuration
@@ -70,6 +78,7 @@ func Load() (*Config, error) {
 		App:       loadAppConfig(),
 		JWT:       loadJWTConfig(),
 		RateLimit: loadRateLimitConfig(),
+		Simulation: loadSimulationConfig(),
 	}
 
 	// Validate required configuration
@@ -113,6 +122,14 @@ func loadRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
 		Max:        getEnvIntOrDefault("RATE_LIMIT_MAX", 100),
 		Expiration: getEnvIntOrDefault("RATE_LIMIT_EXPIRATION", 60),
+	}
+}
+
+func loadSimulationConfig() SimulationConfig {
+	enabled, _ := strconv.ParseBool(getEnvOrDefault("SIMULATION_ENABLED", "true"))
+	return SimulationConfig{
+		Enabled:  enabled,
+		Interval: getEnvDurationOrDefault("SIMULATION_INTERVAL", 5*time.Second),
 	}
 }
 

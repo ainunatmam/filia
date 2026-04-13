@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log"
 
-	"wallet-api/config"
+	"mini-exchange/config"
 
 	_ "github.com/go-sql-driver/mysql"
 )

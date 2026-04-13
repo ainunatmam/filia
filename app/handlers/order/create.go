@@ -1,28 +1,14 @@
-package example
+package order
 
 import (
 	appctx "mini-exchange/app/ctx"
 	"mini-exchange/app/presentation"
-	"mini-exchange/app/services/example"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
-// Singleton validator instance for better performance
-var validate = validator.New()
+func (h *orderHandler) Create(c *fiber.Ctx) error {
 
-type exampleHandler struct {
-	exampleService example.ExampleService
-}
-
-func NewExampleHandler(exampleService example.ExampleService) ExampleHandler {
-	return &exampleHandler{
-		exampleService: exampleService,
-	}
-}
-
-func (h *exampleHandler) Create(c *fiber.Ctx) error {
 	requestID := appctx.GetRequestID(c.UserContext())
 	if requestID == "" {
 		if val := c.Locals("request_id"); val != nil {
@@ -32,7 +18,7 @@ func (h *exampleHandler) Create(c *fiber.Ctx) error {
 		}
 	}
 
-	var req presentation.ExampleRequest
+	var req presentation.CreateOrderRequest
 	if err := c.BodyParser(&req); err != nil {
 		// Don't expose raw parsing error details
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -45,15 +31,13 @@ func (h *exampleHandler) Create(c *fiber.Ctx) error {
 			presentation.ResponseBase{}.Failed(fiber.StatusBadRequest, "Validation failed: please check your input", requestID))
 	}
 
-	// Pass context.Context to service instead of fiber.Ctx
-	ctx := appctx.WithRequestID(c.UserContext(), requestID)
-	err := h.exampleService.Create(ctx, &req)
+	err := h.orderService.Create(c.Context(), req)
 	if err != nil {
-		// Don't expose internal error details to client
-		return c.Status(fiber.StatusInternalServerError).JSON(
-			presentation.ResponseBase{}.Failed(fiber.StatusInternalServerError, "An internal error occurred", requestID))
+		return c.Status(fiber.StatusBadGateway).JSON(
+		presentation.ResponseBase{}.Failed(fiber.StatusInternalServerError, "An internal error occurred", requestID))
 	}
 
 	return c.Status(fiber.StatusOK).JSON(
 		presentation.ResponseBase{}.Success("Success", nil, requestID))
+
 }

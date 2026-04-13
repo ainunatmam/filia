@@ -2,8 +2,8 @@ package example
 
 import (
 	"context"
-	"wallet-api/app/entity"
-	"wallet-api/app/presentation"
+	"mini-exchange/app/entity"
+	"mini-exchange/app/presentation"
 )
 
 func (s *exampleService) Create(ctx context.Context, req *presentation.ExampleRequest) error {

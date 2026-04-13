@@ -2,13 +2,13 @@ package bootstrap
 
 import (
 	"database/sql"
+	"mini-exchange/app/libraries"
+	"mini-exchange/app/middleware"
+	"mini-exchange/app/routes"
+	"mini-exchange/config"
 	"os"
 	"os/signal"
 	"syscall"
-	"wallet-api/app/libraries"
-	"wallet-api/app/middleware"
-	"wallet-api/app/routes"
-	"wallet-api/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -43,7 +43,7 @@ func (b *bootstrap) Run() error {
 	middleware.InitRateLimiter(b.cfg.RateLimit.Max, b.cfg.RateLimit.Expiration)
 
 	// Initialize routes
-	routes.NewRouter(b.c, b.mysqlDB).Init()
+	routes.NewRouter(b.c, b.mysqlDB, b.cfg).Init()
 
 	// Graceful shutdown
 	go func() {

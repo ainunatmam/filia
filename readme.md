@@ -52,38 +52,38 @@ Server runs at `http://localhost:3000` by default.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| **Database** |
-| `DATABASE_USERNAME` | `root` | MySQL username |
-| `DATABASE_PASSWORD` | `` | MySQL password |
-| `DATABASE_HOST` | `127.0.0.1` | MySQL host |
-| `DATABASE_PORT` | `3306` | MySQL port |
-| `DATABASE_NAME` | `wallet_api` | Database name |
-| `DB_MAX_OPEN_CONNS` | `100` | Max open connections |
-| `DB_MAX_IDLE_CONNS` | `25` | Max idle connections |
-| `DB_CONN_MAX_LIFETIME` | `300` | Connection max lifetime (seconds) |
-| `DB_CONN_MAX_IDLE_TIME` | `60` | Connection max idle time (seconds) |
-| `DB_QUERY_TIMEOUT` | `30` | Query timeout (seconds) |
-| **Application** |
-| `APP_PORT` | `:3000` | Server port |
-| `APP_ENV` | `development` | Environment (development/staging/production) |
-| **JWT** |
-| `JWT_SECRET` | - | **Required in production** |
-| `JWT_EXPIRATION_HOURS` | `24` | Token expiration time |
-| **Rate Limiting** |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window |
-| `RATE_LIMIT_EXPIRATION` | `60` | Window duration (seconds) |
-| **Logging** |
-| `LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |
-| `LOG_FORMAT` | `console` | Output format (console/json) |
+| Variable                | Default       | Description                                  |
+| ----------------------- | ------------- | -------------------------------------------- |
+| **Database**            |
+| `DATABASE_USERNAME`     | `root`        | MySQL username                               |
+| `DATABASE_PASSWORD`     | ``            | MySQL password                               |
+| `DATABASE_HOST`         | `127.0.0.1`   | MySQL host                                   |
+| `DATABASE_PORT`         | `3306`        | MySQL port                                   |
+| `DATABASE_NAME`         | `wallet_api`  | Database name                                |
+| `DB_MAX_OPEN_CONNS`     | `100`         | Max open connections                         |
+| `DB_MAX_IDLE_CONNS`     | `25`          | Max idle connections                         |
+| `DB_CONN_MAX_LIFETIME`  | `300`         | Connection max lifetime (seconds)            |
+| `DB_CONN_MAX_IDLE_TIME` | `60`          | Connection max idle time (seconds)           |
+| `DB_QUERY_TIMEOUT`      | `30`          | Query timeout (seconds)                      |
+| **Application**         |
+| `APP_PORT`              | `:3000`       | Server port                                  |
+| `APP_ENV`               | `development` | Environment (development/staging/production) |
+| **JWT**                 |
+| `JWT_SECRET`            | -             | **Required in production**                   |
+| `JWT_EXPIRATION_HOURS`  | `24`          | Token expiration time                        |
+| **Rate Limiting**       |
+| `RATE_LIMIT_MAX`        | `100`         | Max requests per window                      |
+| `RATE_LIMIT_EXPIRATION` | `60`          | Window duration (seconds)                    |
+| **Logging**             |
+| `LOG_LEVEL`             | `info`        | Log level (debug/info/warn/error)            |
+| `LOG_FORMAT`            | `console`     | Output format (console/json)                 |
 
 ---
 
 ## Project Structure
 
 ```
-wallet-api/
+mini-exchange/
 ├── main.go                 # Application entry point
 ├── bootstrap/
 │   ├── app.go              # Application bootstrap & middleware setup
@@ -147,10 +147,43 @@ This boilerplate follows **Clean Architecture** principles:
 ```
 
 **Key principles:**
+
 - Services use `context.Context`, NOT `fiber.Ctx` (decoupled from HTTP)
 - Repositories handle all database operations
 - Errors are wrapped with context for debugging
 - Internal errors are never exposed to clients
+
+---
+
+## Market Features
+
+### 1. Market Simulation
+The application includes a background simulation task that generates realistic market activity.
+- **Mechanism**: Periodically injects random orders (BUY/SELL) for symbols like `IDR`, `BTC`, and `ETH`.
+- **Logic**: Generates prices based on a ±2% deviation from the last traded price.
+- **Concurrency**: Runs in its own Goroutine and uses internal channels to communicate with the Matching Engine, ensuring zero race conditions and non-blocking performance.
+- **Configuration**:
+  - `SIMULATION_ENABLED`: `true`/`false`
+  - `SIMULATION_INTERVAL`: e.g., `5s`
+
+### 2. WebSocket Real-time Updates
+Clients can subscribe to real-time market data via WebSocket.
+
+**Connection URL**: `ws://localhost:3000/ws`
+
+**Available Channels**:
+- `market.ticker:{SYMBOL}` - Price changes, daily volume.
+- `market.trade:{SYMBOL}` - Individual trade executions.
+- `market.orderbook:{SYMBOL}` - Real-time bid/ask depth changes.
+- `order.update` - Status updates for user orders.
+
+**Example Subscription Payload**:
+```json
+{
+  "type": "subscribe",
+  "channel": "market.trade:IDR"
+}
+```
 
 ---
 
@@ -224,15 +257,15 @@ go test ./app/services/example/... -v
 
 ## Security Features
 
-| Feature | Implementation |
-|---------|----------------|
-| JWT Algorithm Validation | Prevents algorithm confusion attacks |
+| Feature                    | Implementation                         |
+| -------------------------- | -------------------------------------- |
+| JWT Algorithm Validation   | Prevents algorithm confusion attacks   |
 | Error Message Sanitization | Internal errors not exposed to clients |
-| Input Sanitization | XSS protection on all inputs |
-| Rate Limiting | Configurable per-IP limits |
-| Request Body Limit | 4MB max payload size |
-| Security Headers | Helmet middleware (CSP, etc.) |
-| CORS | Configurable cross-origin policy |
+| Input Sanitization         | XSS protection on all inputs           |
+| Rate Limiting              | Configurable per-IP limits             |
+| Request Body Limit         | 4MB max payload size                   |
+| Security Headers           | Helmet middleware (CSP, etc.)          |
+| CORS                       | Configurable cross-origin policy       |
 
 ---
 
