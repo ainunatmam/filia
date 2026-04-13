@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"mini-exchange/app/entity"
+	"mini-exchange/app/libraries"
 	"sync"
 )
 
@@ -22,8 +23,11 @@ func (r *orderBookRepo) GetBookByStockCode(ctx context.Context, code string) (*e
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	libraries.Logger.Debug().Str("stock_code", code).Msg("[OrderBookRepository] Getting order book")
+
 	book, exists := r.orderBook[code]
 	if !exists {
+		libraries.Logger.Debug().Str("stock_code", code).Msg("[OrderBookRepository] Order book not found, creating new")
 		book = &entity.OrderBook{
 			Buys:  []*entity.OrderItem{},
 			Sells: []*entity.OrderItem{},
@@ -37,6 +41,7 @@ func (r *orderBookRepo) Save(ctx context.Context, stockCode string, book *entity
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("buys", len(book.Buys)).Int("sells", len(book.Sells)).Msg("[OrderBookRepository] Saving order book")
 	r.orderBook[stockCode] = book
 	return nil
 }

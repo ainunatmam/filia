@@ -15,64 +15,30 @@ import (
 )
 
 func main() {
-	// Load configuration (includes .env loading)
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("Failed to load configuration:", err)
 	}
 
-	// Initialize logger
 	libraries.InitLogger()
 
-	mysql, err := bootstrap.NewDatabase(&cfg.Database)
-	if err != nil {
-		log.Fatal("Failed to open DB:", err)
-		panic(err)
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "migrate" {
-		runMigration(mysql)
-		return
-	}
-
-	// Initialize background worker
-	
-
 	app := fiber.New(fiber.Config{
-		BodyLimit:    4 * 1024 * 1024, // 4MB max body size
+		BodyLimit:    4 * 1024 * 1024,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	})
 
-	// Add health check endpoints before other routes
-	setupHealthChecks(app, mysql)
-
-	err = bootstrap.NewBootstrap(app, mysql, cfg).Run()
+	err = bootstrap.NewBootstrap(app, cfg).Run()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func setupHealthChecks(app *fiber.App, db *sql.DB) {
-	// Liveness check - returns OK if app is running
+func setupHealthChecks(app *fiber.App) {
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status": "ok",
-		})
-	})
-
-	// Readiness check - returns OK if app can handle requests (DB connected)
-	app.Get("/ready", func(c *fiber.Ctx) error {
-		err := db.Ping()
-		if err != nil {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"status": "not ready",
-				"error":  "database connection failed",
-			})
-		}
-		return c.JSON(fiber.Map{
-			"status": "ready",
 		})
 	})
 }

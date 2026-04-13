@@ -3,9 +3,9 @@ package ws
 import (
 	"encoding/json"
 	"mini-exchange/app/entity"
+	"mini-exchange/app/libraries"
 
 	"github.com/gofiber/websocket/v2"
-	"github.com/rs/zerolog/log"
 )
 
 func NewWSHandler(h Hub) func(*websocket.Conn) {
@@ -17,7 +17,6 @@ func NewWSHandler(h Hub) func(*websocket.Conn) {
 
 		h.Register(client)
 
-		// Writer
 		go func() {
 			defer func() {
 				h.Unregister(client)
@@ -29,13 +28,12 @@ func NewWSHandler(h Hub) func(*websocket.Conn) {
 					return
 				}
 				if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
-					log.Error().Err(err).Msg("Websocket write error")
+					libraries.Logger.Error().Err(err).Msg("Websocket write error")
 					return
 				}
 			}
 		}()
 
-		// Reader
 		defer func() {
 			h.Unregister(client)
 			c.Close()
@@ -45,14 +43,14 @@ func NewWSHandler(h Hub) func(*websocket.Conn) {
 			_, message, err := c.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Error().Err(err).Msg("Websocket read error")
+					libraries.Logger.Error().Err(err).Msg("Websocket read error")
 				}
 				break
 			}
 
 			var req entity.WSMessage
 			if err := json.Unmarshal(message, &req); err != nil {
-				log.Warn().Err(err).Msg("Invalid WS message format")
+				libraries.Logger.Warn().Err(err).Msg("Invalid WS message format")
 				continue
 			}
 
@@ -62,7 +60,7 @@ func NewWSHandler(h Hub) func(*websocket.Conn) {
 			case "unsubscribe":
 				h.Unsubscribe(client, req.Channel)
 			default:
-				log.Warn().Str("type", req.Type).Msg("Unknown WS message type")
+				libraries.Logger.Warn().Str("type", req.Type).Msg("Unknown WS message type")
 			}
 		}
 	}

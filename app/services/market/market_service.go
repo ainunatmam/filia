@@ -3,6 +3,7 @@ package market
 import (
 	"context"
 	"mini-exchange/app/entity"
+	"mini-exchange/app/libraries"
 	"mini-exchange/app/repositories"
 	"sync"
 )
@@ -35,9 +36,11 @@ func (s *marketService) GetTicker(ctx context.Context, stockCode string) (*entit
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	libraries.Logger.Debug().Str("stock_code", stockCode).Msg("[MarketService] Getting ticker")
+
 	ticker, exists := s.tickers[stockCode]
 	if !exists {
-		// Return empty ticker if no trades yet
+		libraries.Logger.Debug().Str("stock_code", stockCode).Msg("[MarketService] No ticker found, returning empty")
 		return &entity.Ticker{
 			StockCode: stockCode,
 			LastPrice: 0,
@@ -49,8 +52,11 @@ func (s *marketService) GetTicker(ctx context.Context, stockCode string) (*entit
 }
 
 func (s *marketService) GetOrderBookSnapshot(ctx context.Context, stockCode string, depth int) (*entity.OrderBook, error) {
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("depth", depth).Msg("[MarketService] Getting order book snapshot")
+
 	book, err := s.orderBookRepo.GetBookByStockCode(ctx, stockCode)
 	if err != nil {
+		libraries.Logger.Error().Str("stock_code", stockCode).Err(err).Msg("[MarketService] Failed to get order book")
 		return nil, err
 	}
 
@@ -60,15 +66,17 @@ func (s *marketService) GetOrderBookSnapshot(ctx context.Context, stockCode stri
 		Sells: s.truncate(book.Sells, depth),
 	}
 
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("buys", len(snapshot.Buys)).Int("sells", len(snapshot.Sells)).Msg("[MarketService] Order book snapshot retrieved")
 	return snapshot, nil
 }
 
 func (s *marketService) GetRecentTrades(ctx context.Context, stockCode string, limit int) ([]*entity.TradeItem, error) {
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("limit", limit).Msg("[MarketService] Getting recent trades")
+
 	allTrades := s.tradeRepo.GetAll()
 	var filtered []*entity.TradeItem
 
 	// Filter by stock code and take last N
-	// Note: GetAll might return them in chronological order, so we take from the end.
 	for i := len(allTrades) - 1; i >= 0; i-- {
 		if allTrades[i].StockCode == stockCode {
 			filtered = append(filtered, allTrades[i])
@@ -78,12 +86,15 @@ func (s *marketService) GetRecentTrades(ctx context.Context, stockCode string, l
 		}
 	}
 
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("count", len(filtered)).Msg("[MarketService] Recent trades retrieved")
 	return filtered, nil
 }
 
 func (s *marketService) UpdateTicker(stockCode string, price int, quantity int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	libraries.Logger.Debug().Str("stock_code", stockCode).Int("price", price).Int("quantity", quantity).Msg("[MarketService] Updating ticker")
 
 	if _, exists := s.firstPrices[stockCode]; !exists {
 		s.firstPrices[stockCode] = price

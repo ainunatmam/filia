@@ -1,283 +1,186 @@
-A production-ready Go REST API boilerplate using Clean Architecture pattern with Fiber framework.
+# Mini Exchange
+
+Real-time mini stock exchange system with Go & Fiber — featuring order matching engine, WebSocket live updates, and market simulation.
 
 ## Features
 
-- **Clean Architecture** - Handler → Service → Repository pattern
-- **Fiber Framework** - Fast HTTP server with middleware support
-- **MySQL + Goqu** - Database with type-safe query builder
-- **JWT Authentication** - Secure token-based auth with algorithm validation
-- **Rate Limiting** - Configurable request rate limiting
-- **Graceful Shutdown** - Proper cleanup of resources on exit
-- **Database Migrations** - Using Goose for versioned migrations
-- **Structured Logging** - Zerolog with configurable output format
-- **Input Sanitization** - XSS protection middleware
-- **Health Checks** - Liveness and readiness endpoints
-
----
-
-## Requirements
-
-- Go 1.21+
-- MySQL 8.0+
+| Feature | Description |
+|---------|-------------|
+| Order Matching Engine | Price-time priority matching |
+| WebSocket Updates | Live order book, trade & ticker |
+| Market Simulation | Auto-generate orders for testing |
+| Clean Architecture | Handler → Service → Repository |
+| Structured Logging | Zerolog with configurable format |
 
 ---
 
 ## Quick Start
 
-### 1. Clone and Setup
-
 ```bash
-# Copy environment file
+# Clone & setup
+git clone <repository-url> && cd mini-exchange
 cp .env.example .env
 
-# Edit configuration
-nano .env
+# Run
+go mod download && go run main.go
 ```
 
-### 2. Run Migrations
-
-```bash
-go run main.go migrate up
-```
-
-### 3. Start Server
-
-```bash
-go run main.go
-```
-
-Server runs at `http://localhost:3000` by default.
-
----
-
-## Environment Variables
-
-| Variable                | Default       | Description                                  |
-| ----------------------- | ------------- | -------------------------------------------- |
-| **Database**            |
-| `DATABASE_USERNAME`     | `root`        | MySQL username                               |
-| `DATABASE_PASSWORD`     | ``            | MySQL password                               |
-| `DATABASE_HOST`         | `127.0.0.1`   | MySQL host                                   |
-| `DATABASE_PORT`         | `3306`        | MySQL port                                   |
-| `DATABASE_NAME`         | `wallet_api`  | Database name                                |
-| `DB_MAX_OPEN_CONNS`     | `100`         | Max open connections                         |
-| `DB_MAX_IDLE_CONNS`     | `25`          | Max idle connections                         |
-| `DB_CONN_MAX_LIFETIME`  | `300`         | Connection max lifetime (seconds)            |
-| `DB_CONN_MAX_IDLE_TIME` | `60`          | Connection max idle time (seconds)           |
-| `DB_QUERY_TIMEOUT`      | `30`          | Query timeout (seconds)                      |
-| **Application**         |
-| `APP_PORT`              | `:3000`       | Server port                                  |
-| `APP_ENV`               | `development` | Environment (development/staging/production) |
-| **JWT**                 |
-| `JWT_SECRET`            | -             | **Required in production**                   |
-| `JWT_EXPIRATION_HOURS`  | `24`          | Token expiration time                        |
-| **Rate Limiting**       |
-| `RATE_LIMIT_MAX`        | `100`         | Max requests per window                      |
-| `RATE_LIMIT_EXPIRATION` | `60`          | Window duration (seconds)                    |
-| **Logging**             |
-| `LOG_LEVEL`             | `info`        | Log level (debug/info/warn/error)            |
-| `LOG_FORMAT`            | `console`     | Output format (console/json)                 |
-
----
-
-## Project Structure
-
-```
-mini-exchange/
-├── main.go                 # Application entry point
-├── bootstrap/
-│   ├── app.go              # Application bootstrap & middleware setup
-│   └── database.go         # Database connection
-├── config/
-│   └── config.go           # Configuration loading & validation
-├── app/
-│   ├── ctx/
-│   │   └── ctx.go          # Context utilities (timeout, request ID)
-│   ├── entity/
-│   │   └── example.go      # Domain entities
-│   ├── errors/
-│   │   └── errors.go       # Custom error types
-│   ├── handlers/
-│   │   └── example/        # HTTP handlers (controllers)
-│   ├── services/
-│   │   └── example/        # Business logic
-│   ├── repositories/
-│   │   ├── contract.go     # Repository interfaces
-│   │   └── example.go      # Repository implementations
-│   ├── presentation/
-│   │   ├── request.go      # Request DTOs
-│   │   └── response.go     # Response DTOs
-│   ├── middleware/
-│   │   ├── auth.go         # JWT authentication
-│   │   ├── error_handler.go# Centralized error handling
-│   │   ├── ratelimit.go    # Rate limiting
-│   │   └── sanitizer.go    # Input sanitization
-│   ├── libraries/
-│   │   ├── goqu.go         # Goqu database wrapper
-│   │   ├── logger.go       # Zerolog configuration
-│   │   └── transaction_manager.go
-│   ├── routes/
-│   │   ├── route.go        # Router setup
-│   │   └── api.go          # API route definitions
-│   └── utilities/
-│       └── *.go            # Helper functions
-└── database/
-    └── migration/          # SQL migration files
-```
+Server: `http://localhost:3000`
 
 ---
 
 ## Architecture
 
-This boilerplate follows **Clean Architecture** principles:
-
 ```
-┌─────────────────────────────────────────────────┐
-│                   Handlers                       │  ← HTTP layer
-│              (fiber.Ctx → Response)              │
-├─────────────────────────────────────────────────┤
-│                   Services                       │  ← Business logic
-│           (context.Context → error)              │
-├─────────────────────────────────────────────────┤
-│                 Repositories                     │  ← Data access
-│            (context.Context → entity)            │
-├─────────────────────────────────────────────────┤
-│                   Database                       │  ← Infrastructure
-└─────────────────────────────────────────────────┘
+HTTP Request ──▶ Handler ──▶ Service ──▶ Repository ──▶ In-Memory Storage
+                    │
+                    ▼
+              MatchingService ──▶ WebSocket Hub ──▶ Clients
 ```
 
-**Key principles:**
+| Layer | Responsibility |
+|-------|----------------|
+| **Handlers** | Parse request, validate, return response |
+| **Services** | Business logic, order matching |
+| **Repositories** | Data storage with mutex locks |
+| **WebSocket Hub** | Pub/sub broadcast to clients |
+| **Tasks** | Background: matching engine, simulation |
 
-- Services use `context.Context`, NOT `fiber.Ctx` (decoupled from HTTP)
-- Repositories handle all database operations
-- Errors are wrapped with context for debugging
-- Internal errors are never exposed to clients
+### Matching Algorithm
+
+**Price-Time Priority:**
+- BUY matches SELL where `sell.price ≤ buy.price`
+- SELL matches BUY where `buy.price ≥ sell.price`
+- Partial fills supported, remaining goes to order book
 
 ---
 
-## Market Features
+## API Reference
 
-### 1. Market Simulation
-The application includes a background simulation task that generates realistic market activity.
-- **Mechanism**: Periodically injects random orders (BUY/SELL) for symbols like `IDR`, `BTC`, and `ETH`.
-- **Logic**: Generates prices based on a ±2% deviation from the last traded price.
-- **Concurrency**: Runs in its own Goroutine and uses internal channels to communicate with the Matching Engine, ensuring zero race conditions and non-blocking performance.
-- **Configuration**:
-  - `SIMULATION_ENABLED`: `true`/`false`
-  - `SIMULATION_INTERVAL`: e.g., `5s`
+**Base URL:** `http://localhost:3000`
 
-### 2. WebSocket Real-time Updates
-Clients can subscribe to real-time market data via WebSocket.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/greeting` | Greeting message |
+| POST | `/api/order` | Create order |
+| GET | `/api/order` | List all orders |
+| GET | `/api/trade` | Trade history |
+| GET | `/api/market/snapshot` | Market data snapshot |
 
-**Connection URL**: `ws://localhost:3000/ws`
+### Create Order
 
-**Available Channels**:
-- `market.ticker:{SYMBOL}` - Price changes, daily volume.
-- `market.trade:{SYMBOL}` - Individual trade executions.
-- `market.orderbook:{SYMBOL}` - Real-time bid/ask depth changes.
-- `order.update` - Status updates for user orders.
+```bash
+curl -X POST http://localhost:3000/api/order \
+  -H "Content-Type: application/json" \
+  -d '{"stock_code": "IDR", "side": "BUY", "price": 65000, "quantity": 10}'
+```
 
-**Example Subscription Payload**:
+**Request Body:**
 ```json
 {
-  "type": "subscribe",
-  "channel": "market.trade:IDR"
+  "stock_code": "IDR",      // Required: asset code
+  "side": "BUY",            // Required: BUY or SELL  
+  "price": 65000,           // Required: price > 0
+  "quantity": 10            // Required: quantity > 0
 }
 ```
 
----
-
-## API Endpoints
-
-### Health Checks
+### Market Snapshot
 
 ```bash
-# Liveness check
-curl http://localhost:3000/health
-
-# Readiness check (includes DB)
-curl http://localhost:3000/ready
+curl "http://localhost:3000/api/market/snapshot?stock_code=IDR&depth=10"
 ```
 
-### Example Endpoint
-
-```bash
-# Create example
-curl -X POST http://localhost:3000/api/example \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test"}'
-```
+**Query Params:** `stock_code` (required), `depth` (default: 20), `trade_limit` (default: 50)
 
 ---
 
-## Database Migrations
+## WebSocket
 
-```bash
-# Run all pending migrations
-go run main.go migrate up
+**Connect:** `ws://localhost:3000/ws`
 
-# Rollback last migration
-go run main.go migrate down
+### Subscribe/Unsubscribe
 
-# Check migration status
-go run main.go migrate status
-
-# Create new migration
-go run main.go migrate create <migration_name>
+```json
+{"type": "subscribe", "channel": "market.ticker:IDR"}
+{"type": "unsubscribe", "channel": "market.ticker:IDR"}
 ```
 
----
+### Available Channels
 
-## Development
+| Channel | Description | Data |
+|---------|-------------|------|
+| `market.ticker:{stock}` | Price updates | `last_price`, `change`, `volume` |
+| `market.orderbook:{stock}` | Order book changes | `buys[]`, `sells[]` |
+| `market.trade:{stock}` | Trade executions | `price`, `quantity`, `buy_order_id`, `sell_order_id` |
+| `order.update` | Order status changes | `order_id`, `status`, `filled_quantity` |
 
-### Adding a New Feature
+> Channel names are case-insensitive
 
-1. **Create Entity** in `app/entity/`
-2. **Create Migration** with `go run main.go migrate create <name>`
-3. **Create Repository** interface in `app/repositories/contract.go`
-4. **Implement Repository** in `app/repositories/<name>.go`
-5. **Create Service** in `app/services/<name>/`
-6. **Create Handler** in `app/handlers/<name>/`
-7. **Register Routes** in `app/routes/api.go`
+### JavaScript Example
 
-### Running Tests
+```javascript
+const ws = new WebSocket('ws://localhost:3000/ws');
 
-```bash
-# Run all tests
-go test ./...
+ws.onopen = () => {
+  ws.send(JSON.stringify({type: 'subscribe', channel: 'market.ticker:IDR'}));
+  ws.send(JSON.stringify({type: 'subscribe', channel: 'market.trade:IDR'}));
+};
 
-# Run with verbose output
-go test ./... -v
-
-# Run specific package tests
-go test ./app/services/example/... -v
+ws.onmessage = (e) => {
+  const {channel, data} = JSON.parse(e.data);
+  console.log(channel, data);
+};
 ```
 
 ---
 
-## Security Features
+## Configuration
 
-| Feature                    | Implementation                         |
-| -------------------------- | -------------------------------------- |
-| JWT Algorithm Validation   | Prevents algorithm confusion attacks   |
-| Error Message Sanitization | Internal errors not exposed to clients |
-| Input Sanitization         | XSS protection on all inputs           |
-| Rate Limiting              | Configurable per-IP limits             |
-| Request Body Limit         | 4MB max payload size                   |
-| Security Headers           | Helmet middleware (CSP, etc.)          |
-| CORS                       | Configurable cross-origin policy       |
+```env
+APP_PORT=:3000
+APP_ENV=development
+LOG_LEVEL=info
+LOG_FORMAT=console
+RATE_LIMIT_MAX=100
+RATE_LIMIT_EXPIRATION=60
+SIMULATION_ENABLED=true
+SIMULATION_INTERVAL=2s
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_PORT` | `:3000` | Server port |
+| `LOG_LEVEL` | `info` | debug/info/warn/error |
+| `SIMULATION_ENABLED` | `true` | Enable market simulation |
+| `SIMULATION_INTERVAL` | `2s` | Order generation interval |
 
 ---
 
-## Production Checklist
+## Technical Notes
 
-- [ ] Change `JWT_SECRET` to a strong random value
-- [ ] Set `APP_ENV=production`
-- [ ] Set `LOG_FORMAT=json` for structured logging
-- [ ] Configure proper database credentials
-- [ ] Set up TLS/HTTPS (via reverse proxy)
-- [ ] Configure rate limits appropriately
-- [ ] Set up monitoring and alerting
+### Race Condition Handling
+
+| Area | Strategy |
+|------|----------|
+| Order Book | `sync.RWMutex` for read/write protection |
+| Matching Engine | Single goroutine worker via channel queue |
+| Trade Store | Append-only with mutex lock |
+| WebSocket | Buffered channel per client + drop strategy |
+
+### Non-Blocking WebSocket Broadcast
+
+- Per-client buffered channel (`256` buffer)
+- Dedicated write goroutine per client
+- Drop messages if client buffer full (backpressure)
+- Fan-out pattern via central Hub
+
+### Known Bottlenecks
+
+- Single matching engine goroutine (throughput limit)
+- In-memory storage (no persistence, memory growth)
+- WebSocket fan-out cost at high client count
 
 ---
 

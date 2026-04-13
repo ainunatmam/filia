@@ -4,13 +4,12 @@ import (
 	"context"
 	"math/rand"
 	"mini-exchange/app/entity"
+	"mini-exchange/app/libraries"
 	"mini-exchange/app/services/market"
 	"mini-exchange/app/services/matching"
 	"mini-exchange/app/utilities"
 	"mini-exchange/config"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 type SimulationTask interface {
@@ -33,18 +32,16 @@ func NewSimulationTask(ms matching.MatchingService, mkt market.MarketService, cf
 
 func (t *simulationTask) Run(ctx context.Context) {
 	if !t.cfg.Simulation.Enabled {
-		log.Info().Msg("Market Simulation is disabled")
+		libraries.Logger.Info().Msg("Market Simulation is disabled")
 		return
 	}
 
-	log.Info().Dur("interval", t.cfg.Simulation.Interval).Msg("Starting Market Simulation")
+	libraries.Logger.Info().Dur("interval", t.cfg.Simulation.Interval).Msg("Starting Market Simulation")
 
 	ticker := time.NewTicker(t.cfg.Simulation.Interval)
 	defer ticker.Stop()
 
 	stocks := []string{"IDR", "BTC", "ETH"}
-	
-	// Initial prices if no trades exist
 	defaultPrices := map[string]int{
 		"IDR": 15000,
 		"BTC": 65000,
@@ -63,30 +60,28 @@ func (t *simulationTask) Run(ctx context.Context) {
 
 func (t *simulationTask) generateRandomOrder(ctx context.Context, stocks []string, defaultPrices map[string]int) {
 	stock := stocks[rand.Intn(len(stocks))]
-	
-	// Get last price or use default
+
 	tickerData, _ := t.marketService.GetTicker(ctx, stock)
 	lastPrice := tickerData.LastPrice
 	if lastPrice == 0 {
 		lastPrice = defaultPrices[stock]
 	}
 
-	// Random side
 	side := "BUY"
 	if rand.Intn(2) == 0 {
 		side = "SELL"
 	}
 
-	// Random price deviation (-2% to +2%)
+	// Price deviation: -2% to +2%
 	deviation := (rand.Float64() * 0.04) - 0.02
 	price := int(float64(lastPrice) * (1 + deviation))
-	
-	// Slightly favor matching by making Buy price a bit higher or Sell price a bit lower occasionally
+
+	// Occasionally favor matching
 	if rand.Intn(10) > 7 {
 		if side == "BUY" {
-			price = lastPrice + 1 // Guarantee a match if someone is selling at lastPrice
+			price = lastPrice + 1
 		} else {
-			price = lastPrice - 1 // Guarantee a match if someone is buying at lastPrice
+			price = lastPrice - 1
 		}
 	}
 
@@ -106,7 +101,7 @@ func (t *simulationTask) generateRandomOrder(ctx context.Context, stocks []strin
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}
 
-	log.Debug().
+	libraries.Logger.Debug().
 		Str("side", side).
 		Str("stock", stock).
 		Int("price", price).

@@ -3,11 +3,11 @@ package ws
 import (
 	"encoding/json"
 	"mini-exchange/app/entity"
+	"mini-exchange/app/libraries"
 	"strings"
 	"sync"
 
 	"github.com/gofiber/websocket/v2"
-	"github.com/rs/zerolog/log"
 )
 
 type Client struct {
@@ -55,7 +55,7 @@ func (h *hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Info().Msg("WebSocket: Client registered")
+			libraries.Logger.Info().Msg("WebSocket: Client registered")
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -67,7 +67,7 @@ func (h *hub) Run() {
 				close(client.Send)
 			}
 			h.mu.Unlock()
-			log.Info().Msg("WebSocket: Client unregistered")
+			libraries.Logger.Info().Msg("WebSocket: Client unregistered")
 
 		case msg := <-h.broadcast:
 			h.mu.RLock()
@@ -87,18 +87,18 @@ func (h *hub) Run() {
 			}
 			b, err := json.Marshal(payload)
 			if err != nil {
-				log.Error().Err(err).Msg("WebSocket: Marshal error")
+				libraries.Logger.Error().Err(err).Msg("WebSocket: Marshal error")
 				h.mu.RUnlock()
 				continue
 			}
 
-			log.Debug().Str("channel", channel).Int("subscribers", len(subscribers)).Msg("WebSocket: Broadcasting message")
+			libraries.Logger.Debug().Str("channel", channel).Int("subscribers", len(subscribers)).Msg("WebSocket: Broadcasting message")
 			
 			for client := range subscribers {
 				select {
 				case client.Send <- b:
 				default:
-					log.Warn().Msg("WebSocket: Client send buffer full, dropping message")
+					libraries.Logger.Warn().Msg("WebSocket: Client send buffer full, dropping message")
 				}
 			}
 			h.mu.RUnlock()
@@ -124,7 +124,7 @@ func (h *hub) Subscribe(client *Client, channel string) {
 		h.channels[channel] = make(map[*Client]bool)
 	}
 	h.channels[channel][client] = true
-	log.Info().Str("channel", channel).Msg("WebSocket: Client subscribed")
+	libraries.Logger.Info().Str("channel", channel).Msg("WebSocket: Client subscribed")
 }
 
 func (h *hub) Unsubscribe(client *Client, channel string) {
@@ -136,7 +136,7 @@ func (h *hub) Unsubscribe(client *Client, channel string) {
 	if _, ok := h.channels[channel]; ok {
 		delete(h.channels[channel], client)
 	}
-	log.Info().Str("channel", channel).Msg("WebSocket: Client unsubscribed")
+	libraries.Logger.Info().Str("channel", channel).Msg("WebSocket: Client unsubscribed")
 }
 
 func (h *hub) Broadcast(channel string, data interface{}) {
